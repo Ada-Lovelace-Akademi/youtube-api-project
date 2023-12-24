@@ -1,6 +1,6 @@
 import pandas as pd
 
-def get_channel_stats(youtube, channel_ids):
+def collect_channel_stats(youtube, channel_ids):
     """
     Get channel statistics: title, subscriber count, view count, video count, upload playlist
 
@@ -36,7 +36,7 @@ def get_channel_stats(youtube, channel_ids):
     return pd.DataFrame(all_data)
 
 
-def get_video_ids(youtube, playlist_id):
+def collect_video_ids(youtube, playlist_id):
     """
     Get list of video IDs of all videos in the given playlist
     
@@ -80,3 +80,48 @@ def get_video_ids(youtube, playlist_id):
 
         
     return video_ids
+
+
+def collect_video_details(youtube, video_ids):
+    """
+    Get video statistics of all videos with given IDs
+    
+    Params:
+    
+    youtube: the build object from googleapiclient.discovery
+    video_ids: list of video IDs
+    
+    Returns:
+    Dataframe with statistics of videos, i.e.:
+        'channelTitle', 'title', 'description', 'tags', 'publishedAt'
+        'viewCount', 'likeCount', 'favoriteCount', 'commentCount'
+        'duration', 'definition', 'caption'
+    """
+        
+    all_video_info = []
+    
+    for i in range(0, len(video_ids), 50):
+        request = youtube.videos().list(
+            part="snippet,contentDetails,statistics",
+            id=','.join(video_ids[i:i+50])
+        )
+        response = request.execute() 
+
+        for video in response['items']:
+            stats_to_keep = {'snippet': ['channelTitle', 'title', 'description', 'tags', 'publishedAt'],
+                             'statistics': ['viewCount', 'likeCount', 'favouriteCount', 'commentCount'],
+                             'contentDetails': ['duration', 'definition', 'caption']
+                            }
+            video_info = {}
+            video_info['video_id'] = video['id']
+
+            for k in stats_to_keep.keys():
+                for v in stats_to_keep[k]:
+                    try:
+                        video_info[v] = video[k][v]
+                    except:
+                        video_info[v] = None
+
+            all_video_info.append(video_info)
+            
+    return pd.DataFrame(all_video_info)
